@@ -1,0 +1,59 @@
+name: postgis-k8s
+type: charm
+summary: PostGIS-enabled PostgreSQL server for the Soundscape data pipeline.
+description: |
+  Runs the postgis/postgis container image and provides a `database`
+  relation used by the soundscape ingest-k8s and tilesrv-k8s charms to
+  read and write OpenStreetMap data. Direct translation of the `postgis`
+  service in svcs/data/docker-compose.yml.
+
+bases:
+  - build-on:
+      - name: ubuntu
+        channel: "22.04"
+    run-on:
+      - name: ubuntu
+        channel: "22.04"
+
+parts:
+  charm:
+    plugin: charm
+    source: .
+
+containers:
+  postgis:
+    resource: postgis-image
+    mounts:
+      - storage: pgdata
+        location: /var/lib/postgresql/data
+
+resources:
+  postgis-image:
+    type: oci-image
+    description: postgis/postgis image, matches the `postgis` service in docker-compose.yml
+    upstream-source: docker.io/postgis/postgis:latest
+
+storage:
+  pgdata:
+    type: filesystem
+    location: /var/lib/postgresql/data
+
+provides:
+  database:
+    interface: postgis
+
+config:
+  options:
+    postgres-password:
+      type: string
+      default: ""
+      description: |
+        Superuser password for the postgres role, equivalent to the
+        POSTGRES_PASSWORD environment variable in docker-compose.yml.
+        Leave empty to auto-generate a random password on first install.
+    database-name:
+      type: string
+      default: "osm"
+      description: |
+        Name of the database that ingest-k8s provisions and tilesrv-k8s
+        queries, equivalent to POSTGIS_DBNAME in docker-compose.yml.

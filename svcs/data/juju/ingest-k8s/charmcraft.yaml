@@ -1,0 +1,67 @@
+name: ingest-k8s
+type: charm
+summary: OpenStreetMap ingestion service for the Soundscape data pipeline.
+description: |
+  Periodically downloads OSM extracts, imports them into PostGIS with
+  imposm3, and imports supplemental non-OSM data. Direct translation of the
+  `ingest` service in svcs/data/docker-compose.yml. Requires a `database`
+  relation to postgis-k8s.
+
+bases:
+  - build-on:
+      - name: ubuntu
+        channel: "22.04"
+    run-on:
+      - name: ubuntu
+        channel: "22.04"
+
+parts:
+  charm:
+    plugin: charm
+    source: .
+
+containers:
+  ingest:
+    resource: ingest-image
+    mounts:
+      - storage: tiles
+        location: /tiles
+
+resources:
+  ingest-image:
+    type: oci-image
+    description: |
+      Image built from svcs/data/Dockerfile.ingest (equivalent to the
+      `build: dockerfile: Dockerfile.ingest` entry in docker-compose.yml).
+      Supply with `--resource ingest-image=<registry>/<image>:<tag>` at deploy time.
+
+storage:
+  tiles:
+    type: filesystem
+    location: /tiles
+
+requires:
+  database:
+    interface: postgis
+    limit: 1
+
+config:
+  options:
+    gen-regions:
+      type: string
+      default: "district-of-columbia"
+      description: |
+        Space-separated region names from extracts.json to ingest,
+        equivalent to GEN_REGIONS in docker-compose.yml.
+    loop-time:
+      type: int
+      default: 14400
+      description: |
+        Seconds between database update passes, equivalent to LOOP_TIME in
+        docker-compose.yml.
+    ingest-flags:
+      type: string
+      default: ""
+      description: |
+        Extra flags appended to the ingest.py invocation, equivalent to
+        INGEST_FLAGS.

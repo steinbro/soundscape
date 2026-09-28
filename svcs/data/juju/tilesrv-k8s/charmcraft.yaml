@@ -1,0 +1,40 @@
+name: tilesrv-k8s
+type: charm
+summary: GeoJSON tile server for the Soundscape data pipeline.
+description: |
+  Serves GeoJSON map tiles generated on the fly from PostGIS. Direct
+  translation of the `tilesrv-blue`/`tilesrv-green` services in
+  svcs/data/docker-compose.yml (the blue/green rollout scheme itself is not
+  represented; this charm models a single tile-server deployment that can
+  be scaled with `juju scale-application`). Requires a `database` relation
+  to postgis-k8s.
+
+bases:
+  - build-on:
+      - name: ubuntu
+        channel: "22.04"
+    run-on:
+      - name: ubuntu
+        channel: "22.04"
+
+parts:
+  charm:
+    plugin: charm
+    source: .
+
+containers:
+  tilesrv:
+    resource: tilesrv-image
+
+resources:
+  tilesrv-image:
+    type: oci-image
+    description: |
+      Image built from svcs/data/Dockerfile.tilesrv (equivalent to the
+      `build: dockerfile: Dockerfile.tilesrv` entry in docker-compose.yml).
+      Supply with `--resource tilesrv-image=<registry>/<image>:<tag>` at deploy time.
+
+requires:
+  database:
+    interface: postgis
+    limit: 1
